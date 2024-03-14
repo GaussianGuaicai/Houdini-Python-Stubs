@@ -4,7 +4,6 @@ Fill out hou.pyi typing stub based on hou.py docstrings and _hou.so symbol table
 """
 from __future__ import absolute_import, division, print_function
 
-import bootstrap_luma
 
 import json
 import os
@@ -28,9 +27,16 @@ from typing import (
 
 import attr
 
-import pylib.strings
-import setpkglib
-from pylib.compat import str
+# Define a function to convert a string to snake case
+def snake_case(s:str):
+    # Replace hyphens with spaces, then apply regular expression substitutions for title case conversion
+    # and add an underscore between words, finally convert the result to lowercase
+    return '_'.join(
+        re.sub('([A-Z][a-z]+)', r' \1',
+        re.sub('([A-Z]+)', r' \1',
+        s.replace('-', ' '))).split()).lower()
+
+from mypy import stubgen
 
 if TYPE_CHECKING:
     from typing import *
@@ -40,17 +46,11 @@ T = TypeVar('T')
 # FIXME: Update this to use lib2to3/doc484:
 #  https://github.com/chadrik/doc484/blob/master/doc484/fixes/fix_type_comments.py
 
-PY2 = False
-if PY2:
-    HFS = '/luma/soft/applications/SideFx/Linux-x86_64/houdini-19.0.657/'
-    HOUPY = HFS + 'houdini/python2.7libs/hou.py'
-    HOUSO = HFS + 'houdini/python2.7libs/_hou.so'
-else:
-    HFS = '/luma/soft/applications/SideFx/Linux-x86_64/houdini-19.5.569/'
-    HOUPY = HFS + 'houdini/python3.7libs/hou.py'
-    HOUSO = HFS + 'houdini/python3.7libs/_hou.so'
-HOUPYI = '/tmp/hou.pyi'
-HOUPYI_OUT = os.path.expandvars('$REPO_PATH/houdini/python/hou.pyi')
+HFS = 'C:/Program Files/Side Effects Software/Houdini 20.0.506/'
+HOUPY = HFS + 'houdini/python3.10libs/hou.py'
+HOUSO = HFS + 'houdini/python3.10libs/_hou.so'
+HOUPYI = 'tmp/hou.pyi'
+HOUPYI_OUT = 'output/hou.pyi'
 
 PYI_RECORD_FMT = (
     "## Created stubs from HFS: %s\n"
@@ -2435,12 +2435,12 @@ def parseArgs(namespacedName, argstr, typeHints, className=None):
             # of an argument name.  This looks to only happen if it's
             # an EnumValue though.
             if reHOMArgumentFormat.match(argName):
-                argName = pylib.strings.toSnakeCase(
+                argName = snake_case(
                     reHOMArgumentFormat.sub(r'\g<type>', argName)
                 )
                 argType = 'EnumValue'
             elif reHOUArgumentFormat.match(argName):
-                argName = pylib.strings.toSnakeCase(
+                argName = snake_case(
                     reHOUArgumentFormat.sub(r'\g<type>', argName)
                 )
                 argType = 'EnumValue'
@@ -2927,7 +2927,7 @@ def createPYIFile():
     This will copy the hou.py to a temp folder to avoid the relative
     import error when generating the stub.
     """
-    tmp = '/tmp/hou.py'
+    tmp = 'tmp/hou.py'
     with open(HOUPY) as infp:
         with open(tmp, 'w') as outfp:
             contents = infp.read().replace(
@@ -2940,19 +2940,8 @@ def createPYIFile():
             outfp.write(contents)
 
     # Find the location of the mypy stubgen
-    mypyRaw = setpkglib.check_output(['which', 'mypy'], packages=['mypy']).strip()
-    mypy = re.match(r".*?(/[^']+)", str(mypyRaw)).group(1)
-    stubgen = os.path.join(os.path.normpath(mypy + '/../..'), 'bin/stubgen')
-
     # Generate the stubs
-    if PY2:
-        setpkglib.check_call(
-            [stubgen, '--py2', '--no-import', tmp, '-o', '/tmp/'], packages=['mypy']
-        )
-    else:
-        setpkglib.check_call(
-            [stubgen, '--no-import', tmp, '-o', '/tmp/'], packages=['mypy']
-        )
+    stubgen.main(['--no-import', tmp, '-o', 'tmp'])
 
 
 def updatePYIFile(classes, funcs):
