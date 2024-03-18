@@ -167,3 +167,4 @@ tmp
 *.sqlite3
 pdm.toml
 example
+src/houdini_python_stubs/backup

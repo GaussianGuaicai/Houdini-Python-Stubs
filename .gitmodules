@@ -1,0 +1,3 @@
+[submodule "submodules/pybind11-stubgen"]
+	path = submodules/pybind11-stubgen
+	url = https://github.com/sizmailov/pybind11-stubgen.git
