@@ -53,21 +53,22 @@ def regex_colon_path(regex_path: str) -> tuple[re.Pattern, str]:
     return regex(pattern_str), path
 
 enum_class_locations = (
-    'workItemState:_pdg.workItemState',
-    'attribSaveType:_pdg.attribSaveType',
-    'dirtyHandlerType:_pdg.dirtyHandlerType',
-    'cookType:_pdg.cookType',
-    'attribErrorLevel:_pdg.attribErrorLevel',
-    'attribOverwrite:_pdg.attribOverwrite',
-    'attribType:_pdg.attribType',
-    'attribMatchType:_pdg.attribMatchType',
-    'pathMapMatchType:_pdg.pathMapMatchType',
-    'attribCollisionStrategy:_pdg.attribCollisionStrategy',
-    'fileTransferType:_pdg.fileTransferType'
+    'workItemState:_pdg',
+    'attribSaveType:_pdg',
+    'dirtyHandlerType:_pdg',
+    'cookType:_pdg',
+    'attribErrorLevel:_pdg',
+    'attribOverwrite:_pdg',
+    'attribType:_pdg',
+    'attribMatchType:_pdg',
+    'pathMapMatchType:_pdg',
+    'attribCollisionStrategy:_pdg',
+    'fileTransferType:_pdg'
 )
 enum_class_locations = map(lambda string: regex_colon_path(string),enum_class_locations)
 
 stubgen.main(module_name='_pdg',output_dir='output',enum_class_locations=list(enum_class_locations))
+stubgen.main(module_name='pdg',output_dir='output',enum_class_locations=list(enum_class_locations))
 
 # sys.argv = [
 #     '--enum-class-locations workItemState:pdg.workItemState',
