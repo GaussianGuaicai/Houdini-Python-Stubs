@@ -35,8 +35,6 @@ finally:
     if hasattr(sys, "setdlopenflags"):
         sys.setdlopenflags(old_dlopen_flags)
 
-import pdg
-
 import pybind11_stubgen as stubgen
 import re
 
@@ -65,15 +63,7 @@ enum_class_locations = (
     'attribCollisionStrategy:_pdg',
     'fileTransferType:_pdg'
 )
-enum_class_locations = map(lambda string: regex_colon_path(string),enum_class_locations)
+enum_class_locations = list(map(lambda string: regex_colon_path(string),enum_class_locations))
 
-stubgen.main(module_name='_pdg',output_dir='output',enum_class_locations=list(enum_class_locations))
-stubgen.main(module_name='pdg',output_dir='output',enum_class_locations=list(enum_class_locations))
-
-# sys.argv = [
-#     '--enum-class-locations workItemState:pdg.workItemState',
-#     '-o output',
-#     '_pdg'
-#     ]
-# stubgen.main()
-# print('done')
+stubgen.main(module_name='_pdg',output_dir='output',enum_class_locations=enum_class_locations)
+stubgen.main(module_name='pdg',output_dir='output',enum_class_locations=enum_class_locations)
