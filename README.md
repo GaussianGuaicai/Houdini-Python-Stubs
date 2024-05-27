@@ -11,3 +11,8 @@ I copy this script from [cg-stubs](https://github.com/LumaPictures/cg-stubs) and
 ```
 src\houdini_python_stubs\hou_pyi_update.py
 ```
+
+Change environment variables 'HFS' and 'HHP', and run this script to generate HAPI stubs.
+```
+src\houdini_python_stubs\hapi_pyi_gen_standalone.py
+```

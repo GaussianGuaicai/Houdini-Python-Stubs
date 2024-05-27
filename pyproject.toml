@@ -24,4 +24,5 @@ dev = [
     "ipython>=8.18.1",
     "jupyter>=1.0.0",
     "beautifulsoup4>=4.12.3",
+    "pybind11-stubgen @ file:///${PROJECT_ROOT}/submodules/pybind11-stubgen",
 ]
