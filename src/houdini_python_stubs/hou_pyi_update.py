@@ -46,9 +46,9 @@ T = TypeVar('T')
 # FIXME: Update this to use lib2to3/doc484:
 #  https://github.com/chadrik/doc484/blob/master/doc484/fixes/fix_type_comments.py
 
-HFS = 'C:/Program Files/Side Effects Software/Houdini 20.0.506/'
-HOUPY = HFS + 'houdini/python3.10libs/hou.py'
-HOUSO = HFS + 'houdini/python3.10libs/_hou.so'
+HFS = 'C:/Program Files/Side Effects Software/Houdini 20.5.278/'
+HOUPY = HFS + 'houdini/python3.11libs/hou.py'
+HOUSO = HFS + 'houdini/python3.11libs/_hou.so'
 HOUPYI = 'tmp/hou.pyi'
 HOUPYI_OUT = 'output/hou.pyi'
 
@@ -2580,6 +2580,9 @@ def determineArgType(name, value, typeHint, funcName):
     # Some of the values still refer to the C++ namespaces
     value = reHOMArgumentFormat.sub(r'\g<type>', value)
     value = value.replace('::', '.')
+
+    # Remove this weird namespace
+    value = value.removeprefix('Hom:')
 
     if value.startswith("hou."):
         value = value[4:]
