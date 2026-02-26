@@ -2615,6 +2615,9 @@ def determineArgType(name, value, typeHint, funcName):
     value = reHOMArgumentInline.sub(r'\g<type>', value)
     value = value.replace('::', '.')
 
+    # Remove this weird namespace
+    value = value.removeprefix('Hom:')
+
     if value.startswith("hou."):
         value = value[4:]
 

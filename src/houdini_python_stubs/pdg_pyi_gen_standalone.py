@@ -1,6 +1,6 @@
 import sys, os
-os.environ['HFS'] = "C:\Program Files\Side Effects Software\Houdini 19.5.682"
-os.environ['HHP'] = "C:\Program Files\Side Effects Software\Houdini 19.5.682\houdini\python3.9libs"
+os.environ['HFS'] = "C:\Program Files\Side Effects Software\Houdini 20.5.278"
+os.environ['HHP'] = "C:\Program Files\Side Effects Software\Houdini 20.5.278\houdini\python3.11libs"
 
 # == Set up the environment so that "import hou" works. ==
 # Importing hou will load Houdini's libraries and initialize Houdini.
