@@ -10,6 +10,7 @@ import os
 import re
 import subprocess
 import textwrap
+import glob
 from builtins import filter, next, range
 from collections import OrderedDict
 from typing import (
@@ -46,9 +47,40 @@ T = TypeVar('T')
 # FIXME: Update this to use lib2to3/doc484:
 #  https://github.com/chadrik/doc484/blob/master/doc484/fixes/fix_type_comments.py
 
-HFS = 'C:/Program Files/Side Effects Software/Houdini 20.0.506/'
-HOUPY = HFS + 'houdini/python3.10libs/hou.py'
-HOUSO = HFS + 'houdini/python3.10libs/_hou.so'
+HFS = os.environ.get('HFS', 'C:/Program Files/Side Effects Software/Houdini 21.0.512/')
+
+
+def _normalize_hfs(hfs):
+    # type: (str) -> str
+    return hfs.replace('\\', '/').rstrip('/') + '/'
+
+
+def _detect_houdini_python_lib_dir(hfs):
+    # type: (str) -> str
+    hfs = _normalize_hfs(hfs)
+    candidates = glob.glob(hfs + 'houdini/python3.*libs')
+    # Prefer the highest python minor version if multiple are present.
+    candidates = sorted(candidates)
+    if not candidates:
+        raise FileNotFoundError('Could not find Houdini python libs under HFS=%s' % hfs)
+    return candidates[-1].replace('\\', '/')
+
+
+def _detect_hou_binary(lib_dir):
+    # type: (str) -> str
+    pyd_path = lib_dir + '/_hou.pyd'
+    so_path = lib_dir + '/_hou.so'
+    if os.path.exists(pyd_path):
+        return pyd_path
+    if os.path.exists(so_path):
+        return so_path
+    raise FileNotFoundError('Could not find _hou binary in %s' % lib_dir)
+
+
+HFS = _normalize_hfs(HFS)
+_PYLIB_DIR = _detect_houdini_python_lib_dir(HFS)
+HOUPY = _PYLIB_DIR + '/hou.py'
+HOUSO = _detect_hou_binary(_PYLIB_DIR)
 HOUPYI = 'tmp/hou.pyi'
 HOUPYI_OUT = 'output/hou.pyi'
 
@@ -369,6 +401,7 @@ reEnumValues = re.compile(r'enum values?')
 reEndsWithTuples = re.compile(r'(?P<prefix>.*) tuples?$')
 reStartsWithTupleOfAndParenthesis = re.compile(r'^tuple of \(')
 reHOMArgumentFormat = re.compile(r'\[Hom:(?:hou\.)?(?P<type>.*?)\]')
+reHOMArgumentInline = re.compile(r'^Hom:(?:hou\.)?(?P<type>.*)$')
 reHOUArgumentFormat = re.compile(r'hou\.(?P<type>.*?)')
 reExtraSpaces = re.compile(r' +')
 reLowercasePluralWord = re.compile(r'^[a-z]\w*s$')
@@ -2579,6 +2612,7 @@ def determineArgType(name, value, typeHint, funcName):
 
     # Some of the values still refer to the C++ namespaces
     value = reHOMArgumentFormat.sub(r'\g<type>', value)
+    value = reHOMArgumentInline.sub(r'\g<type>', value)
     value = value.replace('::', '.')
 
     if value.startswith("hou."):
@@ -2620,7 +2654,10 @@ def determineArgType(name, value, typeHint, funcName):
             #  take, so here we generalize the tuple or list arg to Sequence.
             argType = 'Sequence[%s]' % nestedArgType
         else:
-            argType = eval(value).__class__.__name__
+            try:
+                argType = eval(value).__class__.__name__
+            except Exception:
+                argType = 'Any'
             if argType == 'NoneType':
                 # This is some optional argument that we won't be able to
                 # figure out easily.
@@ -2813,13 +2850,33 @@ def extractCTypes():
     -------
     Dict[str, Dict[int, str]]
     """
-    proc = subprocess.Popen(
-        ('strings %s | c++filt' % HOUSO), stdout=subprocess.PIPE, shell=True
-    )
-    stdout, stderr = proc.communicate()
+    stdout_text = ''
+
+    # Try the richer pipeline first, then gracefully fall back.
+    # This keeps Linux/macOS behavior while still working on Windows.
+    commands = [
+        'strings "%s" | c++filt' % HOUSO,
+        'strings "%s"' % HOUSO,
+    ]
+
+    for command in commands:
+        proc = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=True,
+        )
+        stdout, stderr = proc.communicate()
+        if proc.returncode == 0 and stdout:
+            stdout_text = stdout.decode('utf-8', errors='ignore')
+            break
+
+    if not stdout_text:
+        print('Warning: failed to extract C++ symbols from %s, continuing without symbol types.' % HOUSO)
+        return {}
 
     filteredData = filter(
-        lambda x: x.startswith("in method '"), stdout.decode('utf-8').split('\n')
+        lambda x: x.startswith("in method '"), stdout_text.split('\n')
     )
     lines = LineIterator(filteredData)
     argTypes = {}  # Dict[str, Dict[int, str]]
@@ -2927,6 +2984,8 @@ def createPYIFile():
     This will copy the hou.py to a temp folder to avoid the relative
     import error when generating the stub.
     """
+    os.makedirs('tmp', exist_ok=True)
+    os.makedirs('output', exist_ok=True)
     tmp = 'tmp/hou.py'
     with open(HOUPY) as infp:
         with open(tmp, 'w') as outfp:
