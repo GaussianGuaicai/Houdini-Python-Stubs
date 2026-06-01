@@ -11,6 +11,7 @@ import re
 import subprocess
 import textwrap
 import glob
+import argparse
 from builtins import filter, next, range
 from collections import OrderedDict
 from typing import (
@@ -83,6 +84,21 @@ HOUPY = _PYLIB_DIR + '/hou.py'
 HOUSO = _detect_hou_binary(_PYLIB_DIR)
 HOUPYI = 'tmp/hou.pyi'
 HOUPYI_OUT = 'output/hou.pyi'
+
+
+def configure_hou_paths(hfs=None, tmp_dir='tmp', output_dir='output'):
+    # type: (Optional[str], str, str) -> None
+    global HFS, _PYLIB_DIR, HOUPY, HOUSO, HOUPYI, HOUPYI_OUT
+    hfs = hfs or os.environ.get('HFS', HFS)
+    HFS = _normalize_hfs(hfs)
+    _PYLIB_DIR = _detect_houdini_python_lib_dir(HFS)
+    HOUPY = _PYLIB_DIR + '/hou.py'
+    HOUSO = _detect_hou_binary(_PYLIB_DIR)
+    HOUPYI = os.path.join(tmp_dir, 'hou.pyi').replace('\\', '/')
+    HOUPYI_OUT = os.path.join(output_dir, 'hou.pyi').replace('\\', '/')
+
+
+configure_hou_paths(HFS)
 
 PYI_RECORD_FMT = (
     "## Created stubs from HFS: %s\n"
@@ -2987,9 +3003,11 @@ def createPYIFile():
     This will copy the hou.py to a temp folder to avoid the relative
     import error when generating the stub.
     """
-    os.makedirs('tmp', exist_ok=True)
-    os.makedirs('output', exist_ok=True)
-    tmp = 'tmp/hou.py'
+    tmp_dir = os.path.dirname(HOUPYI) or 'tmp'
+    output_dir = os.path.dirname(HOUPYI_OUT) or 'output'
+    os.makedirs(tmp_dir, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
+    tmp = os.path.join(tmp_dir, 'hou.py').replace('\\', '/')
     with open(HOUPY) as infp:
         with open(tmp, 'w') as outfp:
             contents = infp.read().replace(
@@ -3003,7 +3021,7 @@ def createPYIFile():
 
     # Find the location of the mypy stubgen
     # Generate the stubs
-    stubgen.main(['--no-import', tmp, '-o', 'tmp'])
+    stubgen.main(['--no-import', tmp, '-o', tmp_dir])
 
 
 def updatePYIFile(classes, funcs):
@@ -3194,12 +3212,29 @@ def updatePYIFile(classes, funcs):
         pyiOutputFile.writelines(pyiOutput)
 
 
-if __name__ == "__main__":
+def generate_hou_stubs(hfs=None, tmp_dir='tmp', output_dir='output'):
+    # type: (Optional[str], str, str) -> None
+    configure_hou_paths(hfs=hfs, tmp_dir=tmp_dir, output_dir=output_dir)
     createPYIFile()
     cTypes = extractCTypes()
     hClasses, hFuncs = getHouStructs(cTypes)
     updatePYIFile(hClasses, hFuncs)
-    # import pprint
-    # pprint.pprint (sorted(hClasses.keys()))
-    # print(hFuncs['Vector2.__iter__'].written)
-    # print(hClasses['Node'].functions['needsToCook'])
+
+
+def _build_arg_parser():
+    # type: () -> argparse.ArgumentParser
+    parser = argparse.ArgumentParser(description='Generate hou pyi stubs for a Houdini install')
+    parser.add_argument('--hfs', help='Explicit Houdini install path (HFS)')
+    parser.add_argument('--tmp-dir', default='tmp', help='Directory for intermediate files')
+    parser.add_argument('--output-dir', default='output', help='Directory to write hou.pyi into')
+    return parser
+
+
+def main():
+    # type: () -> None
+    args = _build_arg_parser().parse_args()
+    generate_hou_stubs(hfs=args.hfs, tmp_dir=args.tmp_dir, output_dir=args.output_dir)
+
+
+if __name__ == "__main__":
+    main()

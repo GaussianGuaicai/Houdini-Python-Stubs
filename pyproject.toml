@@ -13,6 +13,9 @@ requires-python = "==3.11.*"
 readme = "README.md"
 license = {text = "MIT"}
 
+[project.scripts]
+houdini-stubs = "houdini_python_stubs.workflow:main"
+
 
 
 
